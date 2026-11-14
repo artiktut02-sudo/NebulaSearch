@@ -35,15 +35,6 @@ public class MainForm : Form
         Height = 800;
         StartPosition = FormStartPosition.CenterScreen;
         DoubleBuffered = true; // Чтобы анимация не мерцала
-        
-        // Скругление углов самого окна (работает в Windows 11)
-        try
-        {
-            var attribute = (DwmWindowAttribute)19;
-            int val = 2;
-            DwmSetWindowAttribute(Handle, attribute, ref val, sizeof(int));
-        }
-        catch { }
 
         // 2. Верхняя панель (для кнопок и перетаскивания)
         topPanel.Dock = DockStyle.Top;
@@ -84,20 +75,19 @@ public class MainForm : Form
         btnBack.Dock = DockStyle.Left;
         btnBack.Click += (_, _) => { if (webView.CanGoBack) webView.GoBack(); };
 
-        // Адресная строка (сделаем её плоской и тёмной)
+        // Адресная строка
         txtAddress.Dock = DockStyle.Fill;
         txtAddress.BorderStyle = BorderStyle.None;
         txtAddress.BackColor = Color.FromArgb(15, 15, 25);
         txtAddress.ForeColor = Color.FromArgb(200, 200, 255);
         txtAddress.Font = new Font("Segoe UI", 12, FontStyle.Regular);
-        // Добавляем отступы внутри TextBox (хакаем через Padding)
         txtAddress.Margin = new Padding(10, 10, 10, 10); 
         txtAddress.KeyDown += (s, e) =>
         {
             if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Navigate(txtAddress.Text.Trim()); }
         };
 
-        // Собираем панель (порядок важен при Dock)
+        // Собираем панель
         topPanel.Controls.Add(txtAddress);
         topPanel.Controls.Add(btnGo);
         topPanel.Controls.Add(btnReload);
@@ -118,13 +108,13 @@ public class MainForm : Form
         Load += async (_, _) => await InitWebView();
 
         // 5. Запуск анимации
-        animTimer.Interval = 50; // 20 кадров в секунду
+        animTimer.Interval = 50; 
         animTimer.Tick += (s, e) => { starPhase += 0.05f; Invalidate(); };
         animTimer.Start();
     }
 
-    // Перетаскивание окна за верхнюю панель
-    private void TopPanel_MouseDown(object sender, MouseEventArgs e)
+    // Перетаскивание окна за верхнюю панель (добавил object? чтобы убрать Warning)
+    private void TopPanel_MouseDown(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Left)
         {
@@ -133,7 +123,7 @@ public class MainForm : Form
         }
     }
 
-    // Отрисовка космического фона (звезды и туманность)
+    // Отрисовка космического фона
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
@@ -147,24 +137,24 @@ public class MainForm : Form
             g.FillRectangle(brush, ClientRectangle);
         }
 
-        // 2. Туманность (размытые пятна)
-        using (var nebulaBrush = new SolidBrush(Color.FromArgb(40, 100, 50, 200))) // Полупрозрачный фиолетовый
+        // 2. Туманность
+        using (var nebulaBrush = new SolidBrush(Color.FromArgb(40, 100, 50, 200)))
         {
             g.FillEllipse(nebulaBrush, Width / 2 - 200, Height / 2 - 200, 400, 400);
         }
-        using (var nebulaBrush2 = new SolidBrush(Color.FromArgb(30, 50, 150, 250))) // Полупрозрачный синий
+        using (var nebulaBrush2 = new SolidBrush(Color.FromArgb(30, 50, 150, 250)))
         {
             g.FillEllipse(nebulaBrush2, Width / 4 - 150, Height / 3 - 150, 300, 300);
         }
 
-        // 3. Звезды (рандомные точки, которые пульсируют)
-        var rand = new Random(42); // Фиксированный сид, чтобы звезды не прыгали
+        // 3. Звезды
+        var rand = new Random(42);
         for (int i = 0; i < 200; i++)
         {
             int x = rand.Next(Width);
             int y = rand.Next(Height);
             int size = rand.Next(1, 4);
-            int alpha = (int)(Math.Abs(Math.Sin(starPhase + i)) * 155) + 100; // Пульсация
+            int alpha = (int)(Math.Abs(Math.Sin(starPhase + i)) * 155) + 100;
             using var starBrush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255));
             g.FillEllipse(starBrush, x, y, size, size);
         }
@@ -222,35 +212,19 @@ public class NeonButton : Button
     {
         pevent.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         
-        // Фон кнопки
         var bgColor = isHovered ? HoverColor : Color.FromArgb(30, 30, 50);
         using (var brush = new SolidBrush(bgColor))
         {
             pevent.Graphics.FillRectangle(brush, ClientRectangle);
         }
 
-        // Неоновая рамка при наведении
         if (isHovered)
         {
             using var pen = new Pen(HoverColor, 2);
             pevent.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
         }
 
-        // Текст
         TextRenderer.DrawText(pevent.Graphics, Text, Font, ClientRectangle, ForeColor, 
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
-}
-
-// Импорт для скругления окна в Windows 11
-public enum DwmWindowAttribute : uint
-{
-    DWMWA_USE_IMMERSIVE_DARK_MODE = 20,
-    DWMWA_WINDOW_CORNER_PREFERENCE = 33
-}
-
-public static class DWMHelper
-{
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute attr, ref int attrValue, int attrSize);
 }
